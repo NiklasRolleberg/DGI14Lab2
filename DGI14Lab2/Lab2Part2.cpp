@@ -65,7 +65,8 @@ void Draw();
 void RotateVec(vec3& in);
 vec3 DirectLight(const Intersection& i);
 vec3 cramersRule(vec3 col1,vec3 col2,vec3 col3, vec3 b);
-float det(vec3 col1, vec3 col2, vec3 col3);
+double det(vec3 col1, vec3 col2, vec3 col3);
+vec3 lightBounce(vec3 n, vec3 v);
 
 int main(int argc, char* argv[])
 {
@@ -191,25 +192,30 @@ void Draw()
 
 				vec3 color = (Dlight)*triangles[closest.triangleIndex].color;
 
-				int bounces = 4;
-				float r = 0.8;
+				int bounces = 30;
+				float r = 0.4;
 				//Bounce 1
 				Intersection bounce;
-				if (bounces > 0 && ClosestIntersectionVCramer(closest.position, triangles[closest.triangleIndex].normal + dir, triangles, bounce))
+				dir = lightBounce(triangles[closest.triangleIndex].normal, dir);
+				if (bounces > 0 && ClosestIntersectionVCramer(closest.position, dir, triangles, bounce))
 				{
-
-					color += r*(DirectLight(bounce))*triangles[bounce.triangleIndex].color;
+			
+					//color += r*(DirectLight(bounce))*triangles[bounce.triangleIndex].color;
+					color += (r)*triangles[bounce.triangleIndex].color;
 					for (int i = 0; i < bounces - 1; i++) {
-						if (ClosestIntersectionVCramer(bounce.position, triangles[bounce.triangleIndex].normal + dir, triangles, bounce))
+						dir = lightBounce(triangles[bounce.triangleIndex].normal, dir);
+						if (ClosestIntersectionVCramer(bounce.position, dir, triangles, bounce))
 						{
-							color += (r)*(DirectLight(bounce))*triangles[bounce.triangleIndex].color;
+							//color += (r)*(DirectLight(bounce))*triangles[bounce.triangleIndex].color
+							color += r*triangles[bounce.triangleIndex].color;
 						}
 					}
 				}
 
 				//PutPixelSDL(screen, x, y, (Dlight + indirectLight+color)*triangles[closest.triangleIndex].color);
 				//PutPixelSDL(screen, x, y, (Dlight + indirectLight + color)*triangles[closest.triangleIndex].color);
-				PutPixelSDL(screen, x, y, (indirectLight)*color); //mirror
+				PutPixelSDL(screen, x, y, (indirectLight*1.5f)*color); //mirror
+				//PutPixelSDL(screen, x, y, glm::normalize(color)*0.5f);
 			}
 			else {
 				PutPixelSDL(screen, x, y, vec3(0,0,0));
@@ -289,20 +295,20 @@ bool ClosestIntersectionVCramer(vec3 start,vec3 dir,const vector<Triangle>& tria
 			vec3 e2 = v2 - v0;
 			vec3 b = start - v0;
 
-			float A0 = det(-dir, e1, e2);
-			float t = det(b, e1, e2) / A0;
+			double A0 = det(-dir, e1, e2);
+			double t = det(b, e1, e2) / A0;
 
 			if (t > 0) 
 			{
-				float u = det(-dir, b, e2) / A0;
+				double u = det(-dir, b, e2) / A0;
 
 				if (u >= 0) 
 				{
-					float v = det(-dir, e1, b) / A0;
+					double v = det(-dir, e1, b) / A0;
 
 					if (u + v <= 1 && v >= 0) 
 					{
-						if (first || t < distance) 
+						if (first || t <= distance) 
 						{
 							index = i;
 							distance = t;
@@ -369,7 +375,7 @@ vec3 DirectLight(const Intersection& i)
 		Intersection sh;
 		bool a = ClosestIntersection(lightPos, glm::normalize(r), triangles, sh);
 		if (a) {
-			if (sh.distance+0.001 < d) {
+			if (sh.distance + 0.001<= d) {
 				P = 0;// (0.5 / (4.f* 3.14*d*d));
 			}
 			else{
@@ -395,10 +401,18 @@ vec3 cramersRule(vec3 col1, vec3 col2, vec3 col3, vec3 b)
 	return vec3(Ax/A0,Ay/A0,Az/A0);
 }
 
-float det(vec3 col1, vec3 col2, vec3 col3) 
+double det(vec3 col1, vec3 col2, vec3 col3) 
 {
-	float plus = (col1[0] * col2[1] * col3[2]) + (col1[1] * col2[2] * col3[0]) + (col1[2] * col2[0] * col3[1]);
-	float minus = (col1[2] * col2[1] * col3[0]) + (col1[1] * col2[0] * col3[2]) + (col1[0] * col2[2] * col3[1]);
+	double plus = (col1[0] * col2[1] * col3[2]) + (col1[1] * col2[2] * col3[0]) + (col1[2] * col2[0] * col3[1]);
+	double minus = (col1[2] * col2[1] * col3[0]) + (col1[1] * col2[0] * col3[2]) + (col1[0] * col2[2] * col3[1]);
 
 	return plus - minus;
+}
+vec3 lightBounce(vec3 n, vec3 v)
+{
+	float over = glm::dot(n, v);
+	float under = glm::dot(n, n);
+	vec3 proj = (over / under)*n;
+	vec3 rest = proj - v;
+	return glm::normalize(-rest - proj);
 }
