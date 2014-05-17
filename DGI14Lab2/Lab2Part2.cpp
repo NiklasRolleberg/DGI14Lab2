@@ -39,9 +39,11 @@ float yaw = 0;
 //Illumination
 vec3 lightPos(0, -0.5, -0.7);
 vec3 lightColor = 14.f * vec3(1, 1, 1);
-vec3 indirectLight = 0.2f*vec3(1, 1, 1);
+vec3 indirectLight = 0.5f*vec3(1, 1, 1);
 
-
+//bounce and reflection
+int bounces = 3;
+float r = 1;
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
@@ -99,7 +101,7 @@ void Update()
 	if (dt < 20) {
 		SDL_Delay(20 - dt);
 	}
-	cout << "Render time: " << dt << " ms." << endl;
+	//cout << "Render time: " << dt << " ms." << endl;
 	Uint8* keystate = SDL_GetKeyState(0);
 	if (keystate[SDLK_UP])
 	{
@@ -148,6 +150,14 @@ void Update()
 	{
 		lightPos.x-= 0.1;
 	}
+	if (keystate[SDLK_x])
+	{
+		lightColor = lightColor*0.8f;
+	}
+	if (keystate[SDLK_z])
+	{
+		lightColor = lightColor*1.2f;
+	}
 
 	if (keystate[SDLK_e]) //Zoom in
 	{
@@ -192,34 +202,37 @@ void Draw()
 
 				vec3 color = (Dlight)*triangles[closest.triangleIndex].color;
 
-				int bounces = 30;
-				float r = 0.4;
 				//Bounce 1
-				Intersection bounce;
+				Intersection bounce; 
 				dir = lightBounce(triangles[closest.triangleIndex].normal, dir);
 				if (bounces > 0 && ClosestIntersectionVCramer(closest.position, dir, triangles, bounce))
 				{
-			
-					//color += r*(DirectLight(bounce))*triangles[bounce.triangleIndex].color;
-					color += (r)*triangles[bounce.triangleIndex].color;
+					//color += color*(r)*triangles[bounce.triangleIndex].color;
+					color += color*r*(DirectLight(bounce))*triangles[bounce.triangleIndex].color;
+					//color += (r)*triangles[bounce.triangleIndex].color;
 					for (int i = 0; i < bounces - 1; i++) {
 						dir = lightBounce(triangles[bounce.triangleIndex].normal, dir);
 						if (ClosestIntersectionVCramer(bounce.position, dir, triangles, bounce))
 						{
-							//color += (r)*(DirectLight(bounce))*triangles[bounce.triangleIndex].color
-							color += r*triangles[bounce.triangleIndex].color;
+							//color += color*(r)*triangles[bounce.triangleIndex].color;
+							color += color*(r)*(DirectLight(bounce))*triangles[bounce.triangleIndex].color;
+							//color += r*triangles[bounce.triangleIndex].color;
 						}
 					}
 				}
 
 				//PutPixelSDL(screen, x, y, (Dlight + indirectLight+color)*triangles[closest.triangleIndex].color);
 				//PutPixelSDL(screen, x, y, (Dlight + indirectLight + color)*triangles[closest.triangleIndex].color);
-				PutPixelSDL(screen, x, y, (indirectLight*1.5f)*color); //mirror
+				PutPixelSDL(screen, x, y, (indirectLight)*color); //mirror
+				//cout << "Color: (" << color.x << "," << color.y << "," << color.z << endl;
+				//cout << glm::max(color.x, glm::max(color.y, color.z)) << endl;
+				//SDL_Delay(50);
 				//PutPixelSDL(screen, x, y, glm::normalize(color)*0.5f);
 			}
 			else {
 				PutPixelSDL(screen, x, y, vec3(0,0,0));
 			}
+			//SDL_UpdateRect(screen, 0, 0, 0, 0);
 		}
 		SDL_UpdateRect(screen, 0, 0, 0, 0);
 	}
@@ -378,7 +391,7 @@ vec3 DirectLight(const Intersection& i)
 			if (sh.distance + 0.001<= d) {
 				P = 0;// (0.5 / (4.f* 3.14*d*d));
 			}
-			else{
+			else{  
 				P = (1.f / (4.f* 3.14*d*d));
 			}
 		}
