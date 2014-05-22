@@ -42,8 +42,8 @@ vec3 lightColor = 14.f * vec3(1, 1, 1);
 vec3 indirectLight = 0.5f*vec3(1, 1, 1);
 
 //bounce and reflection
-int bounces = 3;
-float r = 1;
+int bounces = 1;
+float r = 2;
 
 // ----------------------------------------------------------------------------
 // FUNCTIONS
